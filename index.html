@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Melba — Find Your Experience Together</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #FDF0EC;
+    --primary: #5151F7;
+    --primary-light: #EEEEFF;
+    --text-dark: #1A1040;
+    --text-mid: #6B6B8A;
+    --text-light: #A0A0BC;
+    --border: #EAE0F2;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    background: #D6C8BF; min-height: 100vh;
+    display: flex; justify-content: center; align-items: flex-start;
+    font-family: 'DM Sans', sans-serif; padding: 20px 0 40px;
+  }
+  .phone {
+    width: 390px; min-height: 844px; background: var(--bg);
+    border-radius: 44px; overflow: hidden; position: relative;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.28); display: flex; flex-direction: column;
+  }
+
+  /* LANDING */
+  .landing-screen {
+    position: absolute; inset: 0; background: var(--bg); z-index: 20;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 48px 32px; transition: opacity 0.4s;
+  }
+  .landing-screen.hidden { opacity: 0; pointer-events: none; }
+  .landing-logo { font-size: 52px; margin-bottom: 20px; }
+  .landing-title { font-family: 'Bricolage Grotesque', sans-serif; font-size: 26px; font-weight: 800; color: var(--text-dark); text-align: center; margin-bottom: 12px; line-height: 1.2; }
+  .landing-sub { font-size: 14px; color: var(--text-mid); text-align: center; line-height: 1.65; margin-bottom: 36px; }
+  .landing-btn {
+    width: 100%; padding: 15px; background: var(--primary); color: #fff;
+    border: none; border-radius: 100px; font-family: 'DM Sans', sans-serif;
+    font-size: 16px; font-weight: 600; cursor: pointer; margin-bottom: 12px; transition: transform 0.15s;
+  }
+  .landing-btn:active { transform: scale(0.98); }
+  .landing-hint { font-size: 12px; color: var(--text-light); text-align: center; margin-top: 12px; }
+
+  /* HEADER */
+  .chat-header {
+    padding: 52px 24px 16px; background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px;
+    flex-shrink: 0; position: relative; z-index: 10;
+  }
+  .avatar {
+    width: 42px; height: 42px; border-radius: 50%;
+    background: linear-gradient(135deg, #5151F7, #D97AC4);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 19px; flex-shrink: 0;
+  }
+  .header-info { flex: 1; }
+  .header-name { font-family: 'Bricolage Grotesque', sans-serif; font-size: 16px; font-weight: 700; color: var(--text-dark); line-height: 1.2; }
+  .header-status { font-size: 12px; color: var(--text-mid); display: flex; align-items: center; gap: 5px; margin-top: 2px; }
+  .status-dot { width: 7px; height: 7px; background: #4CAF50; border-radius: 50%; }
+  .role-badge { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 100px; background: var(--primary-light); color: var(--primary); display: none; }
+  .role-badge.show { display: inline-block; }
+  .progress-wrap { display: flex; align-items: center; gap: 5px; }
+  .prog-step { width: 24px; height: 3px; background: var(--border); border-radius: 100px; transition: background 0.4s; }
+  .prog-step.done { background: var(--primary); }
+
+  /* CHAT */
+  .chat-area { flex: 1; overflow-y: auto; padding: 20px 16px 8px; display: flex; flex-direction: column; gap: 3px; scroll-behavior: smooth; }
+  .chat-area::-webkit-scrollbar { display: none; }
+  .chat-spacer { flex: 1; min-height: 0; }
+
+  .bubble-row { display: flex; align-items: flex-end; gap: 8px; opacity: 0; transform: translateY(12px); transition: opacity 0.35s ease, transform 0.35s ease; margin-bottom: 2px; }
+  .bubble-row.show { opacity: 1; transform: translateY(0); }
+  .bubble-row.user-row { justify-content: flex-end; }
+  .mini-av { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #5151F7, #D97AC4); display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; margin-bottom: 2px; }
+  .mini-av.ghost { visibility: hidden; }
+  .bubble { max-width: 74%; padding: 11px 15px; border-radius: 18px; font-size: 15px; line-height: 1.55; }
+  .melba-bubble { background: #fff; color: var(--text-dark); border-bottom-left-radius: 5px; box-shadow: 0 1px 8px rgba(0,0,0,0.08); }
+  .user-bubble { background: var(--primary); color: #fff; border-bottom-right-radius: 5px; }
+
+  /* TYPING */
+  .typing-row { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 2px; opacity: 0; transition: opacity 0.2s; }
+  .typing-row.show { opacity: 1; }
+  .typing-bubble { background: #fff; border-radius: 18px; border-bottom-left-radius: 5px; padding: 13px 16px; box-shadow: 0 1px 8px rgba(0,0,0,0.08); display: flex; gap: 5px; align-items: center; }
+  .dot { width: 7px; height: 7px; background: var(--text-light); border-radius: 50%; animation: bounce 1.2s ease-in-out infinite; }
+  .dot:nth-child(2) { animation-delay: 0.18s; }
+  .dot:nth-child(3) { animation-delay: 0.36s; }
+  @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-5px)} }
+
+  /* CHIPS */
+  .chips-wrap { flex-shrink: 0; overflow: hidden; max-height: 0; transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1), opacity 0.3s; opacity: 0; }
+  .chips-wrap.open { max-height: 200px; opacity: 1; }
+  .chips-inner { padding: 10px 16px 6px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { padding: 9px 15px; background: #fff; border: 1.5px solid #DDD6F0; border-radius: 100px; font-size: 14px; font-family: 'DM Sans', sans-serif; color: var(--text-dark); cursor: pointer; transition: all 0.18s; white-space: nowrap; }
+  .chip:active { transform: scale(0.96); }
+  .chip.selected { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+  /* INPUT */
+  .input-area { flex-shrink: 0; padding: 10px 16px 38px; background: var(--bg); border-top: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+  .text-input { flex: 1; padding: 12px 16px; background: #fff; border: 1.5px solid var(--border); border-radius: 100px; font-family: 'DM Sans', sans-serif; font-size: 15px; color: var(--text-dark); outline: none; transition: border-color 0.2s; }
+  .text-input:focus { border-color: var(--primary); }
+  .text-input::placeholder { color: var(--text-light); }
+  .send-btn { width: 42px; height: 42px; background: var(--primary); border: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: transform 0.15s, opacity 0.2s; opacity: 0.35; pointer-events: none; }
+  .send-btn.active { opacity: 1; pointer-events: all; }
+  .send-btn:active { transform: scale(0.92); }
+
+  /* INVITE CARD */
+  .invite-card { background: #fff; border-radius: 18px; padding: 18px; max-width: 82%; box-shadow: 0 2px 18px rgba(0,0,0,0.10); }
+  .invite-heading { font-family: 'Bricolage Grotesque', sans-serif; font-size: 15px; font-weight: 800; color: var(--text-dark); margin-bottom: 6px; }
+  .invite-sub { font-size: 12.5px; color: var(--text-mid); line-height: 1.55; margin-bottom: 14px; }
+  .invite-copy-btn { width: 100%; padding: 11px; background: var(--primary); color: #fff; border: none; border-radius: 100px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: transform 0.15s; }
+  .invite-copy-btn:active { transform: scale(0.98); }
+
+  /* WAITING CARD */
+  .waiting-card { background: #fff; border-radius: 18px; padding: 20px 18px; max-width: 80%; box-shadow: 0 2px 18px rgba(0,0,0,0.10); text-align: center; }
+  .waiting-pulse { font-size: 30px; animation: pulse 1.8s ease-in-out infinite; display: block; margin-bottom: 10px; }
+  @keyframes pulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.12);opacity:0.7} }
+  .waiting-text { font-size: 14px; color: var(--text-mid); line-height: 1.55; }
+
+  /* RESULT CARD */
+  .result-card { background: #fff; border-radius: 18px; overflow: hidden; box-shadow: 0 2px 18px rgba(0,0,0,0.11); max-width: 80%; }
+  .rc-hero { height: 110px; background: linear-gradient(135deg, #5151F7 0%, #9B7BE8 55%, #D97AC4 100%); display: flex; align-items: flex-end; padding: 12px 14px; position: relative; }
+  .rc-tag { font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.85); letter-spacing: 1px; text-transform: uppercase; }
+  .rc-joint-badge { position: absolute; top: 12px; left: 14px; background: rgba(255,255,255,0.25); backdrop-filter: blur(6px); border-radius: 100px; padding: 3px 10px; font-size: 10px; font-weight: 600; color: #fff; letter-spacing: 0.5px; }
+  .rc-sparkle { position: absolute; top: 12px; right: 14px; font-size: 20px; animation: float 3s ease-in-out infinite; }
+  @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
+  .rc-body { padding: 12px 14px 14px; }
+  .rc-title { font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 800; color: var(--text-dark); margin-bottom: 5px; }
+  .rc-desc { font-size: 12.5px; color: var(--text-mid); line-height: 1.5; margin-bottom: 10px; }
+  .rc-chips { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 12px; }
+  .rc-chip { padding: 3px 9px; background: var(--primary-light); color: var(--primary); border-radius: 100px; font-size: 11.5px; font-weight: 500; }
+  .rc-btn { width: 100%; padding: 11px; background: var(--primary); color: #fff; border: none; border-radius: 100px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: transform 0.15s; }
+  .rc-btn:active { transform: scale(0.98); }
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <!-- LANDING SCREEN -->
+  <div class="landing-screen" id="landingScreen">
+    <div class="landing-logo">🌸</div>
+    <div class="landing-title">Find your perfect experience together</div>
+    <div class="landing-sub">You each answer separately, privately. Melba combines your answers and unlocks the experience that's right for both of you.</div>
+    <button class="landing-btn" id="startBtn" onclick="startAsPartnerA()">I'm going first — start a session</button>
+    <div class="landing-hint">Your partner will receive a magic link 🔗 — their answers stay private 🔒</div>
+  </div>
+
+  <!-- CHAT UI -->
+  <div class="chat-header">
+    <div class="avatar">🌸</div>
+    <div class="header-info">
+      <div class="header-name">Melba</div>
+      <div class="header-status"><div class="status-dot"></div><span id="headerStatus">Your intimacy guide</span></div>
+    </div>
+    <span class="role-badge" id="roleBadge"></span>
+    <div class="progress-wrap">
+      <div class="prog-step" id="p1"></div>
+      <div class="prog-step" id="p2"></div>
+      <div class="prog-step" id="p3"></div>
+      <div class="prog-step" id="p4"></div>
+      <div class="prog-step" id="p5"></div>
+    </div>
+  </div>
+
+  <div class="chat-area" id="chat">
+    <div class="chat-spacer"></div>
+  </div>
+
+  <div class="chips-wrap" id="chipsWrap">
+    <div class="chips-inner" id="chips"></div>
+  </div>
+
+  <div class="input-area">
+    <input class="text-input" id="textInput" placeholder="Type a message…" oninput="onType()" onkeydown="onKey(event)" />
+    <button class="send-btn" id="sendBtn" onclick="sendFree()">
+      <svg width="17" height="17" viewBox="0 0 18 18" fill="none"><path d="M16 9L2 2l2.5 7L2 16l14-7z" fill="white"/></svg>
+    </button>
+  </div>
+
+</div>
+<script>
+const EPISODES = [
+  {"id":"c5f01108-c2b5-4e25-bd67-5872b5adbd52","name":"The one who receives","mood":"SENSUAL","topics":["BUTT_PLAY"],"who_is_guided":"HER","spice":"🌶️🌶️","practice_tags":["Anal Fingering","Handjob","Massage"],"image":"experienceimage_the_one_who_receives.webp","latest":false},
+  {"id":"1f73aadf-2dce-4f35-88da-b0b77a6c1110","name":"Head Girl","mood":"INTENSE","topics":["ORAL_PLEASURE","POWER_AND_CONTROL","ROLE_PLAYING"],"who_is_guided":"HER","spice":"🌶️🌶️🌶️","practice_tags":["Ball Games","Explicit Language","Female Submissive"],"image":"experienceimage_head_girl.webp","latest":false},
+  {"id":"73f1a08a-9bbc-4b9d-af2c-21513e60f5ca","name":"The Gentle Art of Receiving","mood":"CONNECTION","topics":[],"who_is_guided":"SOLO","spice":"🌶️","practice_tags":["Massage","Mindful Breathing","Tantra"],"image":"experienceimage_revenir_à_soi.webp","latest":false},
+  {"id":"f6e7390b-783d-4405-99fc-7873dfa3b6e0","name":"The Bridge","mood":"SENSUAL","topics":["NEW_SEX_POSITIONS"],"who_is_guided":"HIM","spice":"🌶️🌶️","practice_tags":["Caresses","Fingering","Quickie"],"image":"experienceimage_the_bridge.webp","latest":false},
+  {"id":"245a6127-feba-4aa8-a1c7-c3132ae0e6ef","name":"All Tied Up","mood":"INTENSE","topics":["BUTT_PLAY","POWER_AND_CONTROL"],"who_is_guided":"HIM","spice":"🌶️🌶️🌶️","practice_tags":["Anal Fingering","Bondage","Kissing"],"image":"experienceimage_celui_qui_se_faisait_bander_les_yeux.webp","latest":false},
+  {"id":"0b651ff0-f079-40ca-bd30-33cc4b73d92d","name":"His happy ending","mood":"SENSUAL","topics":["EROTIC_MASSAGE"],"who_is_guided":"HER","spice":"🌶️","practice_tags":["Bedroom","Handjob","Massage"],"image":"experienceimage_his_happy_ending.webp","latest":false},
+  {"id":"ddb494ae-dbd4-46aa-964c-9806d39b3e7f","name":"Jeans On","mood":"PLAYFUL","topics":[],"who_is_guided":"BOTH","spice":"🌶️🌶️","practice_tags":["Kissing","Living Room","Mutual Masturbation"],"image":"experienceimage_jeans_on.webp","latest":false},
+  {"id":"fed2c045-e302-421b-be3a-e2f6dc02311b","name":"Loving Massage","mood":"CONNECTION","topics":["EROTIC_MASSAGE","MINDFUL_AND_CONNECTED"],"who_is_guided":"HIM","spice":"🌶️","practice_tags":["Massage","Mindful Breathing"],"image":"experienceimage_yoni_massage.webp","latest":false},
+  {"id":"c247dba7-df46-4f00-ae84-2bec6c603c4c","name":"Lingam Massage","mood":"CONNECTION","topics":["EROTIC_MASSAGE","HANDS_AND_FINGERS","MINDFUL_AND_CONNECTED"],"who_is_guided":"HER","spice":"🌶️","practice_tags":["Ball Games","Handjob","Massage"],"image":"experienceimage_lingam_massage.webp","latest":false},
+  {"id":"3c158393-dfb8-4d94-8571-f0b44c6bfea2","name":"The one who gives","mood":"SENSUAL","topics":["BUTT_PLAY"],"who_is_guided":"HIM","spice":"🌶️🌶️🌶️","practice_tags":["Anal Fingering","Butt Play","Fingering"],"image":"experienceimage_the_one_who_gives.webp","latest":false},
+  {"id":"8b343ce2-278e-4b86-96f3-38ed22f548ca","name":"Good Sports","mood":"PLAYFUL","topics":["MINDFUL_AND_CONNECTED","NEW_SEX_POSITIONS","ROLE_PLAYING"],"who_is_guided":"BOTH","spice":"🌶️🌶️","practice_tags":["Fingering","Kissing","Living Room"],"image":"experienceimage_celle_qui_faisaient_du_sport.webp","latest":false},
+  {"id":"cd55caa3-384e-45b1-9a4b-f6f591875bd8","name":"His Appreciative Audience","mood":"SENSUAL","topics":["WATCHING_AND_BEING_SEEN"],"who_is_guided":"SOLO","spice":"🌶️🌶️🌶️","practice_tags":["Edging","Exhibitionism","Female Dominant"],"image":"experienceimage_herappreciativeaudience.webp","latest":false},
+  {"id":"97ce8512-967c-4e49-b307-27bebea185a5","name":"The Art of Caressing","mood":"CONNECTION","topics":["EROTIC_MASSAGE","MINDFUL_AND_CONNECTED","SENSORY_PLAY"],"who_is_guided":"BOTH","spice":"🌶️","practice_tags":["Massage","Mindful Touch"],"image":"experienceimage_the_art_of_caressing.webp","latest":false},
+  {"id":"b4ff9c4b-5b5c-495e-a321-439a7fa6b351","name":"Head Boy","mood":"INTENSE","topics":["ORAL_PLEASURE","POWER_AND_CONTROL","ROLE_PLAYING"],"who_is_guided":"HIM","spice":"🌶️🌶️🌶️","practice_tags":["Explicit Language","Face Sitting","Fingering"],"image":"experienceimage_head_boy.webp","latest":false},
+  {"id":"164bc3c7-96d7-47f0-ba73-7cf747567ea1","name":"His Multiple Sensations","mood":"SENSUAL","topics":["MINDFUL_AND_CONNECTED","SENSORY_PLAY"],"who_is_guided":"HER","spice":"🌶️","practice_tags":["Mindful Touch"],"image":"experienceimage_multiple_sensations.webp","latest":false},
+  {"id":"f1c135ea-d9d8-4201-ba84-d8a69ab37190","name":"Eating Out","mood":"SENSUAL","topics":["ORAL_PLEASURE"],"who_is_guided":"HIM","spice":"🌶️🌶️","practice_tags":["Fingering","Kissing","Man Guided"],"image":"experienceimage_the_one_who_went_down_on_her.webp","latest":false},
+  {"id":"5e36188f-f9d2-42f4-a2d4-204f722ccaa7","name":"Yoni Massage","mood":"CONNECTION","topics":["EROTIC_MASSAGE","HANDS_AND_FINGERS","MINDFUL_AND_CONNECTED"],"who_is_guided":"BOTH","spice":"🌶️","practice_tags":["Massage","Mindful Touch"],"image":"experienceimage_yoni_massage.webp","latest":false},
+  {"id":"3c1da57a-c869-4653-83e4-8b1a97c8c4fa","name":"Taking Turns Oral","mood":"SENSUAL","topics":["MINDFUL_AND_CONNECTED","ORAL_PLEASURE"],"who_is_guided":"BOTH","spice":"🌶️","practice_tags":["Handjob","Kissing","Oral for her"],"image":"experienceimage_taking_turn_oral.webp","latest":false},
+  {"id":"f205bde4-58ff-4268-a741-87e16c9b2b3b","name":"The Colleagues","mood":"PLAYFUL","topics":["EROTIC_MASSAGE","ORAL_PLEASURE","ROLE_PLAYING"],"who_is_guided":"BOTH","spice":"🌶️🌶️🌶️","practice_tags":["Blindfolds","Fingering","Grinding"],"image":"experienceimage_the_colleagues.webp","latest":false},
+  {"id":"5391da53-efde-4816-aff1-573465e4acc9","name":"Peach Magic","mood":"INTENSE","topics":[],"who_is_guided":"BOTH","spice":"🌶️🌶️🌶️","practice_tags":["Anal Fingering","Massage","Mutual Masturbation"],"image":"experienceimage_peach_magic.webp","latest":false},
+  {"id":"1d659a84-115f-4f61-a1e7-62b738d5582b","name":"Who stands behind?","mood":"PLAYFUL","topics":["MINDFUL_AND_CONNECTED","SENSORY_PLAY"],"who_is_guided":"BOTH","spice":"🌶️🌶️","practice_tags":["Blindfolds","Fingering","Lingerie"],"image":"experienceimage_under_the_table.webp","latest":false},
+  {"id":"680fa0c5-9a80-4078-9b00-c9e9ba8ff39a","name":"Just the Tongue","mood":"PLAYFUL","topics":["ORAL_PLEASURE"],"who_is_guided":"BOTH","spice":"🌶️🌶️","practice_tags":["Kissing","Man Guided","Oral for her"],"image":"experienceimage_just_the_tongue.webp","latest":false},
+  {"id":"a4eb4621-a89e-47ce-97b1-ed437dd65c87","name":"The One Where She Decides","mood":"SENSUAL","topics":["POWER_AND_CONTROL"],"who_is_guided":"HER","spice":"🌶️🌶️🌶️","practice_tags":["69","Caresses","Oral for her"],"image":"experienceimage_the_one_where_she_decides.webp","latest":false},
+  {"id":"e9aa5b6b-4b9c-4c01-83a2-ee483299c346","name":"Tantric Kissing","mood":"CONNECTION","topics":[],"who_is_guided":"BOTH","spice":"🌶️","practice_tags":["Kissing","Mindful Breathing"],"image":"experienceimage_tantric_kissing.webp","latest":false},
+  {"id":"33507ee9-080d-47b1-80fa-57949a43602d","name":"Blow Him Away","mood":"INTENSE","topics":["ORAL_PLEASURE"],"who_is_guided":"HER","spice":"🌶️🌶️","practice_tags":["Mutual Masturbation","Oral for him","Woman Guided"],"image":"experienceimage_the_one_that_blew_him_away.webp","latest":false},
+  {"id":"aa6e7cdd-e722-4597-8131-2cbdccb2af14","name":"Squirting 101","mood":"INTENSE","topics":["HANDS_AND_FINGERS","TOYS_AND_TOOLS"],"who_is_guided":"HIM","spice":"🌶️🌶️🌶️","practice_tags":["Fingering","Oral for her","Toys"],"image":"experienceimage_squirting_101.webp","latest":false},
+  {"id":"91f9b225-ec4f-4a6f-b08b-8e0c71b9dfbc","name":"Mistress Magician","mood":"INTENSE","topics":["POWER_AND_CONTROL","SENSORY_PLAY","TOYS_AND_TOOLS"],"who_is_guided":"HER","spice":"🌶️🌶️🌶️","practice_tags":["Bondage","Caresses","Female Dominant"],"image":"experienceimage_mistress_magician.webp","latest":false},
+  {"id":"736a135a-10fb-46ef-bf7e-4155eddeefff","name":"The Explorers","mood":"SENSUAL","topics":["MINDFUL_AND_CONNECTED","ORAL_PLEASURE"],"who_is_guided":"BOTH","spice":"🌶️🌶️","practice_tags":["Fingering","Kissing","Mutual Masturbation"],"image":"experienceimage_the_explorer.webp","latest":false},
+  {"id":"9cceb65a-a37e-4c71-872b-fd014d860f9b","name":"Beneath her Sheets","mood":"SENSUAL","topics":["MINDFUL_AND_CONNECTED"],"who_is_guided":"HIM","spice":"🌶️","practice_tags":["Man Guided","Massage","Mindful Touch"],"image":"experienceimage_beneath_her_sheets.webp","latest":false},
+  {"id":"959136d2-b140-4f7a-bb86-26bdd61fc6b0","name":"Massage Magic","mood":"SENSUAL","topics":["EROTIC_MASSAGE","TOYS_AND_TOOLS"],"who_is_guided":"BOTH","spice":"🌶️🌶️","practice_tags":["Caresses","Massage","Toys"],"image":"experienceimage_massage_magic.webp","latest":false},
+  {"id":"62b95e84-016e-4385-8198-06e2d02b0054","name":"She holds the leash","mood":"PLAYFUL","topics":["POWER_AND_CONTROL","ROLE_PLAYING","SENSORY_PLAY"],"who_is_guided":"HER","spice":"🌶️🌶️🌶️","practice_tags":["Bondage","Explicit Language","Female Dominant"],"image":"experienceimage_the_one_with_the_leash.webp","latest":false},
+  {"id":"820f3dfe-931a-44b0-a97b-d15662380362","name":"Table Time","mood":"INTENSE","topics":["NEW_SEX_POSITIONS"],"who_is_guided":"HIM","spice":"🌶️🌶️","practice_tags":["Fingering","Kissing","Oral for her"],"image":"experienceimage_table_time.webp","latest":false},
+  {"id":"7b592138-e390-4003-aead-6166b33c8d1b","name":"The Plumber","mood":"PLAYFUL","topics":[],"who_is_guided":"BOTH","spice":"🌶️🌶️","practice_tags":["Ball Games","Grinding","Kissing"],"image":"experienceimage_celui_qui_venait_reparer_une_fuite_deau.webp","latest":false},
+  {"id":"3514db34-66d7-4deb-9f2b-43385767a8c0","name":"Sweet Anal","mood":"PLAYFUL","topics":["BUTT_PLAY","TOYS_AND_TOOLS"],"who_is_guided":"HIM","spice":"🌶️","practice_tags":["Anal Fingering","Analingus","Butt Play"],"image":"experienceimage_celui_qui_redecouvrait_anal.webp","latest":false},
+  {"id":"d5965f87-470b-4ac0-9768-6986e77d2aef","name":"Mirror Blowjob","mood":"INTENSE","topics":["ORAL_PLEASURE","WATCHING_AND_BEING_SEEN"],"who_is_guided":"HER","spice":"🌶️🌶️🌶️","practice_tags":["Ball Games","Bedroom","Explicit Language"],"image":"experienceimage_mirror_blowjob.webp","latest":false},
+  {"id":"529e11ae-cb95-4da0-b7f9-4f554eb02956","name":"In the Corner","mood":"INTENSE","topics":["NEW_SEX_POSITIONS"],"who_is_guided":"HIM","spice":"🌶️🌶️🌶️","practice_tags":["Fingering","Male Dominant","Man Guided"],"image":"experienceimage_inthecornernew.webp","latest":false},
+  {"id":"29835255-74c6-4e27-9b1e-61115052d4e6","name":"The Mirror Speaks","mood":"PLAYFUL","topics":["WATCHING_AND_BEING_SEEN"],"who_is_guided":"BOTH","spice":"🌶️🌶️","practice_tags":["Bathroom","Exhibitionism","Fingering"],"image":"experienceimagme_themirrorspeaks.webp","latest":false},
+  {"id":"871bb265-4940-4fd1-8dac-449f9898c207","name":"Solo Edging","mood":"SENSUAL","topics":["HANDS_AND_FINGERS"],"who_is_guided":"SOLO","spice":"🌶️","practice_tags":["Caresses","Edging","JOI (jerk off instructions)"],"image":"experienceimage_solo_edging.webp","latest":false},
+  {"id":"722db947-29f3-47ef-a697-59267165c710","name":"Slow Burn","mood":"SENSUAL","topics":[],"who_is_guided":"BOTH","spice":"🌶️","practice_tags":["Background music"],"image":"lucie_broto_strong_circle_vibrations.webp","latest":false},
+  {"id":"c1ba9977-cbb3-4a54-a0f0-0b64c1963394","name":"Tantric Breathwork","mood":"CONNECTION","topics":["MINDFUL_AND_CONNECTED"],"who_is_guided":"BOTH","spice":"🌶️","practice_tags":["Mindful Breathing","Mindful Touch","Tantra"],"image":"experienceimage_tantric_breathwork.webp","latest":false},
+  {"id":"63cffdef-bab8-42fe-81b1-7ab719bab58d","name":"Her BJ Dream","mood":"INTENSE","topics":["HANDS_AND_FINGERS","ROLE_PLAYING"],"who_is_guided":"SOLO","spice":"🌶️🌶️🌶️","practice_tags":["Caresses","JOI (jerk off instructions)","Personified Voice"],"image":"experienceimage_her_bj_dream.webp","latest":false},
+  {"id":"ae30cd87-5324-4b18-8a05-22c260e488b1","name":"Lip Reader","mood":"SENSUAL","topics":["POWER_AND_CONTROL"],"who_is_guided":"HIM","spice":"🌶️🌶️","practice_tags":["Bedroom","Blindfolds","Fingering"],"image":"experienceimage_The_one_who_could_read_lips.webp","latest":false},
+  {"id":"217c19bb-1726-4c65-bb8e-16349f168915","name":"Mirror Show","mood":"INTENSE","topics":[],"who_is_guided":"BOTH","spice":"🌶️🌶️","practice_tags":["Bedroom","Caresses","Exhibitionism"],"image":"experienceimage_mirror_show.webp","latest":false},
+  {"id":"ead8f9be-f3c3-46a7-8d88-cd4fcf748fb1","name":"The Art of Staying Present","mood":"CONNECTION","topics":["EROTIC_MASSAGE","HANDS_AND_FINGERS"],"who_is_guided":"BOTH","spice":"🌶️","practice_tags":["Massage","Mindful Breathing","Tantra"],"image":"experienceimage_the_art_of_being_present.webp","latest":false},
+  {"id":"f0bd3538-10ca-4cbb-8d7b-b10c5496ed60","name":"The One That Vibes","mood":"CONNECTION","topics":[],"who_is_guided":"BOTH","spice":"🌶️🌶️","practice_tags":["Caresses","Massage","Toys"],"image":"experienceimage_the_one_that_vibe.webp","latest":false},
+  {"id":"dbb300ac-82b2-4e4e-aaa3-ae05e9a30328","name":"Master Magician","mood":"INTENSE","topics":["POWER_AND_CONTROL","ROLE_PLAYING","SENSORY_PLAY","TOYS_AND_TOOLS"],"who_is_guided":"HIM","spice":"🌶️🌶️🌶️","practice_tags":["Bondage","Caresses","Female Submissive"],"image":"experienceimage_the_magician_male_dom.webp","latest":false},
+  {"id":"e43deb4a-c274-4307-8369-ff00015b5cab","name":"Hands on","mood":"SENSUAL","topics":["HANDS_AND_FINGERS"],"who_is_guided":"HER","spice":"🌶️🌶️","practice_tags":["Bedroom","Handjob","Kissing"],"image":"experienceimage_celui_qui_souvrait_sensualite.webp","latest":false},
+  {"id":"b36cf328-7c9a-4ff2-b5b6-50fc8639647d","name":"Close Your Eyes","mood":"SENSUAL","topics":[],"who_is_guided":"HER","spice":"🌶️🌶️","practice_tags":["Caresses","Exhibitionism","Man Guided"],"image":"experienceimage_close_your_eyes.webp","latest":false},
+  {"id":"16ce884f-425e-48d1-a024-a3de5760825f","name":"She rides all the way","mood":"PLAYFUL","topics":["MINDFUL_AND_CONNECTED","NEW_SEX_POSITIONS","POWER_AND_CONTROL"],"who_is_guided":"HER","spice":"🌶️🌶️","practice_tags":["Bedroom","Edging","Grinding"],"image":"experienceimage_she_rides_all_the_way.webp","latest":false},
+  {"id":"721b7b26-7ae2-4dad-95e6-55e391611062","name":"Beneath his Sheets","mood":"SENSUAL","topics":["MINDFUL_AND_CONNECTED"],"who_is_guided":"HER","spice":"🌶️","practice_tags":["Bedroom","Massage","Mindful Touch"],"image":"experienceimage_beneath_his_sheets.webp","latest":false},
+  {"id":"7c499da4-adb2-460e-b2a4-ae62d80d89cd","name":"Two Spoons","mood":"PLAYFUL","topics":["NEW_SEX_POSITIONS"],"who_is_guided":"BOTH","spice":"🌶️🌶️","practice_tags":["Fingering","Grinding","Handjob"],"image":"experienceimage_twospoons.webp","latest":false},
+  {"id":"e0ada668-0089-49be-b28d-0f6fe676960d","name":"Her Multiple Sensations","mood":"CONNECTION","topics":["SENSORY_PLAY","TOYS_AND_TOOLS"],"who_is_guided":"HIM","spice":"🌶️","practice_tags":["Massage","Mindful Touch"],"image":"experienceimage_multiple_sensations.webp","latest":false},
+  {"id":"326aa54f-4412-4eb4-a009-922ac3a21600","name":"Slow 69","mood":"CONNECTION","topics":["MINDFUL_AND_CONNECTED","ORAL_PLEASURE"],"who_is_guided":"BOTH","spice":"🌶️🌶️","practice_tags":["69","Kissing","Massage"],"image":"experienceimage_slow_69.webp","latest":false},
+  {"id":"1388eb5e-7fde-45bf-abc4-cb41cf0d5d22","name":"Blindfolded","mood":"SENSUAL","topics":["MINDFUL_AND_CONNECTED","SENSORY_PLAY","TOYS_AND_TOOLS"],"who_is_guided":"HER","spice":"🌶️","practice_tags":["Fingering","Kissing","Mindful Touch"],"image":"experienceimage_mystery_man.webp","latest":false},
+  {"id":"dd9b4b0d-6366-4883-87e7-afeb297019c7","name":"Two girls and a guy","mood":"INTENSE","topics":[],"who_is_guided":"BOTH","spice":"🌶️🌶️🌶️","practice_tags":["Fingering","Handjob","Massage"],"image":"experienceimage_two_girls_and_a_guy.webp","latest":false},
+  {"id":"a1720f42-3614-44db-b685-8369a50219a4","name":"His Little Feather","mood":"CONNECTION","topics":["SENSORY_PLAY"],"who_is_guided":"HER","spice":"🌶️","practice_tags":["Bedroom","Mindful Breathing","Mindful Touch"],"image":"experienceimage_feather_on_him.webp","latest":false},
+  {"id":"c93b9fb0-8914-4bf9-aba5-ca534ccb3caa","name":"His Sensual Side","mood":"SENSUAL","topics":[],"who_is_guided":"BOTH","spice":"🌶️","practice_tags":["69","Bedroom","Handjob"],"image":"experienceimage_celui_qui_souvrait_sensualite.webp","latest":false},
+  {"id":"56ddabff-21ce-4954-b5d9-dd9f53f04405","name":"Deepthroat 101","mood":"INTENSE","topics":["ORAL_PLEASURE"],"who_is_guided":"HER","spice":"🌶️🌶️🌶️","practice_tags":["Bedroom","Deep Throat","Explicit Language"],"image":"experienceimage_deepthroat_101.webp","latest":false},
+  {"id":"a42cc115-3cef-43f0-bf16-2eb80ef10ea2","name":"For Your Fans","mood":"PLAYFUL","topics":["ROLE_PLAYING","WATCHING_AND_BEING_SEEN"],"who_is_guided":"SOLO","spice":"🌶️🌶️🌶️","practice_tags":["Bedroom","Caresses","Exhibitionism"],"image":"experienceimage_for_your_fans.webp","latest":false},
+  {"id":"7b68cc17-b8f2-4490-88e8-92adc7978334","name":"Double Mirror Game","mood":"PLAYFUL","topics":["HANDS_AND_FINGERS","WATCHING_AND_BEING_SEEN"],"who_is_guided":"BOTH","spice":"🌶️🌶️🌶️","practice_tags":["Anal Fingering","Caresses","Exhibitionism"],"image":"experienceimage_double_mirror_play.webp","latest":false},
+  {"id":"3a006a19-94b7-4cae-9066-beab499ba9ac","name":"The Art of Connection","mood":"CONNECTION","topics":[],"who_is_guided":"BOTH","spice":"🌶️","practice_tags":["Kissing","Massage","Mindful Breathing"],"image":"experienceimage_the_art_of_connexion.webp","latest":false},
+  {"id":"1858edd5-0a7e-4cfd-a95a-9043706ea3a0","name":"We are Film Stars","mood":"PLAYFUL","topics":["ROLE_PLAYING","WATCHING_AND_BEING_SEEN"],"who_is_guided":"BOTH","spice":"🌶️🌶️🌶️","practice_tags":["Exhibitionism","Fingering","Handjob"],"image":"experienceimage_we_are_movie_stars.webp","latest":false},
+  {"id":"c047e890-fcf3-450c-90f4-e462901ddc9d","name":"The Explorer","mood":"SENSUAL","topics":[],"who_is_guided":"HER","spice":"🌶️🌶️","practice_tags":["Massage","Mutual Masturbation","Oral for her"],"image":"experienceimage_the_explorer.webp","latest":false},
+  {"id":"2e382b92-c2fa-4125-ad31-008624c34ffd","name":"Connected Warm Up","mood":"CONNECTION","topics":["MINDFUL_AND_CONNECTED"],"who_is_guided":"BOTH","spice":"🌶️","practice_tags":["Mindful Breathing","Mindful Touch"],"image":"experienceimage_connected_warm_up.webp","latest":false},
+  {"id":"1b235bb7-d4a6-4cec-9717-c0ac5e1ee24e","name":"Reverse Rider","mood":"INTENSE","topics":["BUTT_PLAY"],"who_is_guided":"BOTH","spice":"🌶️🌶️🌶️","practice_tags":["Anal Fingering","Butt Play","Female Dominant"],"image":"experienceimage_the_reverse_ride.webp","latest":false},
+  {"id":"21947e00-ad7d-4a7c-8676-1e6e792fec2f","name":"Equal time","mood":"PLAYFUL","topics":["ORAL_PLEASURE"],"who_is_guided":"BOTH","spice":"🌶️🌶️","practice_tags":["Fingering","Massage","Mutual Masturbation"],"image":"experienceimage_equaltime.webp","latest":false},
+  {"id":"4ea5865e-e9af-4225-b88c-0730822662b9","name":"French Kissing","mood":"CONNECTION","topics":[],"who_is_guided":"BOTH","spice":"🌶️","practice_tags":["Kissing","Mindful Breathing"],"image":"experienceimage_french_kissing.webp","latest":false},
+  {"id":"3c545863-8420-4a70-a017-96eb2a37eb36","name":"Uncharted territories","mood":"SENSUAL","topics":["EROTIC_MASSAGE","MINDFUL_AND_CONNECTED","SENSORY_PLAY"],"who_is_guided":"BOTH","spice":"🌶️","practice_tags":["Massage","Mindful Touch"],"image":"experienceimage_uncharted_territories.webp","latest":false},
+  {"id":"f9c2c3ac-c143-47c9-a7c2-b43e446fe80f","name":"The Magic Position","mood":"INTENSE","topics":[],"who_is_guided":"BOTH","spice":"🌶️🌶️","practice_tags":["Fingering","Kissing","Nipple Play"],"image":"experienceimage_the_magic_position.webp","latest":false},
+  {"id":"f56d6b8b-d1c5-44ee-acde-a509826e771b","name":"Mystery Man","mood":"INTENSE","topics":["ROLE_PLAYING"],"who_is_guided":"BOTH","spice":"🌶️🌶️🌶️","practice_tags":["69","Blindfolds","Fingering"],"image":"experienceimage_mystery_man.webp","latest":false},
+  {"id":"8dea83d3-a656-4a80-83a4-28f1783b685a","name":"Her Beads","mood":"INTENSE","topics":["POWER_AND_CONTROL","SENSORY_PLAY","WATCHING_AND_BEING_SEEN"],"who_is_guided":"HER","spice":"🌶️🌶️🌶️","practice_tags":["Exhibitionism","Fingering","Grinding"],"image":"Her beads.webp","latest":false},
+  {"id":"4fdf7d3b-fae6-4e8d-8b2d-7788bc0cde98","name":"Between the three of us","mood":"PLAYFUL","topics":[],"who_is_guided":"BOTH","spice":"🌶️🌶️🌶️","practice_tags":["Fingering","Handjob","Oral for her"],"image":"experienceimage_two_guys_and_a_girl.webp","latest":false},
+  {"id":"60e063ef-f89a-41df-a6a6-df8d3a78b05b","name":"Edge Control","mood":"INTENSE","topics":[],"who_is_guided":"HER","spice":"🌶️🌶️","practice_tags":["Handjob","Male Submissive","Vaginal Penetration"],"image":"experienceimage_edge_control.webp","latest":false},
+  {"id":"90ef0bce-ef3b-4a7c-aacd-70b89c34594f","name":"Tongue Tied","mood":"SENSUAL","topics":["ORAL_PLEASURE"],"who_is_guided":"BOTH","spice":"🌶️🌶️","practice_tags":["Fingering","Kissing","Mutual Masturbation"],"image":"experienceimage_just_the_tongue.webp","latest":false},
+  {"id":"172cdce2-b9b5-413f-bb12-dca42a48233a","name":"Her happy ending","mood":"SENSUAL","topics":["EROTIC_MASSAGE","HANDS_AND_FINGERS","MINDFUL_AND_CONNECTED"],"who_is_guided":"HIM","spice":"🌶️","practice_tags":["Edging","Fingering","Massage"],"image":"experienceimage_her_happy_ending.webp","latest":false},
+  {"id":"da1ecde1-fd5a-46c8-a44b-2debe56ae89f","name":"Against the Wall","mood":"INTENSE","topics":["HANDS_AND_FINGERS","NEW_SEX_POSITIONS"],"who_is_guided":"HIM","spice":"🌶️🌶️","practice_tags":["Explicit Language","Fingering","Male Dominant"],"image":"experienceimage_in_the_corner.webp","latest":false},
+  {"id":"3b0a5f73-2212-4769-8c70-353486a457db","name":"Yoni Gazing","mood":"INTENSE","topics":["MINDFUL_AND_CONNECTED"],"who_is_guided":"SOLO","spice":"🌶️","practice_tags":["Mindful Touch","Solo"],"image":"experienceimage_yoni_gazing.webp","latest":false},
+  {"id":"af1958dd-e313-4c4a-8eb1-3d05859a2d7e","name":"Mutual Masturbation","mood":"SENSUAL","topics":["WATCHING_AND_BEING_SEEN"],"who_is_guided":"BOTH","spice":"🌶️🌶️","practice_tags":["Caresses","Exhibitionism","Mutual Masturbation"],"image":"experienceimage_mutual_masturbation.webp","latest":false},
+  {"id":"e46ccbbd-ddff-4d51-9046-0f1485df6f00","name":"Her Little Feather","mood":"PLAYFUL","topics":["SENSORY_PLAY","TOYS_AND_TOOLS"],"who_is_guided":"HIM","spice":"🌶️","practice_tags":["Mindful Touch","Woman Guided"],"image":"experienceimage_feather_on_her.webp","latest":false},
+  {"id":"40fcbabe-0a5a-4a63-a9b1-ae68e8181805","name":"Table Play","mood":"INTENSE","topics":[],"who_is_guided":"HIM","spice":"🌶️🌶️🌶️","practice_tags":["Anal Fingering","Caresses","Female Submissive"],"image":"experienceimage_table_play.webp","latest":false}
+];
+
+// ── Magic link detection ─────────────────────────────────────────────────────
+(function detectMagicLink() {
+  const params = new URLSearchParams(window.location.search);
+  const sessionParam = params.get("session");
+  const roleParam    = params.get("role");
+  if (sessionParam && roleParam === "B") {
+    window._magicSession = sessionParam;
+  }
+})();
+
+// ── State ────────────────────────────────────────────────────────────────────
+let coupleId    = null;
+let myRole      = null;
+let currentStep = 0;
+let userAnswers = {};
+let locked      = false;
+let typing      = null;
+let pollTimer   = null;
+
+const answerKeys = ["goal", "mood", "experience", "leads", "spice"];
+
+// ── DOM refs ─────────────────────────────────────────────────────────────────
+const chatEl     = document.getElementById("chat");
+const chipsWrap  = document.getElementById("chipsWrap");
+const chipsInner = document.getElementById("chips");
+const textInput  = document.getElementById("textInput");
+const sendBtn    = document.getElementById("sendBtn");
+
+// ── Conversation steps ───────────────────────────────────────────────────────
+const steps = [
+  {
+    progress: 1,
+    messages: [
+      { text: "Hey, I'm your Melba guide 🌸", gap: 400 },
+      { text: "This conversation is just for you — your partner won't see your exact words, only what we choose to share together.", gap: 1100 },
+      { text: "What brings you here today?", gap: 900 }
+    ],
+    chips: ["✨ New experiences", "🔥 Spice things up", "💜 Reconnect", "🌶️ Explore fantasies"]
+  },
+  {
+    progress: 2,
+    ack: ["Love that 💜", "Great, thank you 🙏", "Lovely 💜", "Got it ✨"],
+    messages: [{ text: "How are you both feeling right now, honestly? Your energy tonight shapes everything.", gap: 900 }],
+    chips: ["🤍 Tender, want to reconnect", "😄 Playful, light mood", "🔥 Turned on, ready", "✨ Curious, open to something new"]
+  },
+  {
+    progress: 3,
+    ack: ["Got it 🙌", "Perfect ✨", "Noted 💫"],
+    messages: [{ text: "What kind of experience feels right tonight?", gap: 800 }],
+    chips: ["🕯️ Slow touch & massage", "💋 Oral pleasure", "🎭 Power, roleplay, sensation", "🔄 New positions together"]
+  },
+  {
+    progress: 4,
+    ack: ["Nice 🔥", "Love it ✨", "Ooh 😊"],
+    messages: [{ text: "Tonight — would you love to be guided, take the lead, or discover together?", gap: 800 }],
+    chips: ["🌸 Be guided", "⚡ Take the lead", "🫶 Discover together"]
+  },
+  {
+    progress: 5,
+    ack: ["Perfect.", "Lovely 🌸"],
+    messages: [
+      { text: "Last one, I promise 😊", gap: 600 },
+      { text: "How adventurous are you feeling? You can always go further later.", gap: 700 }
+    ],
+    chips: ["🌶️ Soft & intimate", "🌶️🌶️ A little spicy", "🌶️🌶️🌶️ Turn it up"]
+  }
+];
+
+// ── Utilities ────────────────────────────────────────────────────────────────
+const delay = (ms) => new Promise(r => setTimeout(r, ms));
+function scrollDown() { setTimeout(() => { chatEl.scrollTop = chatEl.scrollHeight; }, 40); }
+function updateProgress(n) { for (let i = 1; i <= 5; i++) document.getElementById("p" + i).classList.toggle("done", i <= n); }
+
+function showTyping() {
+  removeTyping();
+  const row = document.createElement("div");
+  row.className = "typing-row";
+  row.innerHTML = `<div class="mini-av">🌸</div><div class="typing-bubble"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
+  chatEl.appendChild(row);
+  requestAnimationFrame(() => requestAnimationFrame(() => row.classList.add("show")));
+  typing = row;
+  scrollDown();
+}
+function removeTyping() { if (typing) { typing.remove(); typing = null; } }
+
+function addMelba(text, showAv = true) {
+  const row = document.createElement("div");
+  row.className = "bubble-row melba-row";
+  row.innerHTML = `<div class="mini-av ${showAv ? "" : "ghost"}">🌸</div><div class="bubble melba-bubble">${text}</div>`;
+  chatEl.appendChild(row);
+  requestAnimationFrame(() => requestAnimationFrame(() => row.classList.add("show")));
+  scrollDown();
+}
+
+function addUser(text) {
+  const row = document.createElement("div");
+  row.className = "bubble-row user-row";
+  row.innerHTML = `<div class="bubble user-bubble">${text}</div>`;
+  chatEl.appendChild(row);
+  requestAnimationFrame(() => requestAnimationFrame(() => row.classList.add("show")));
+  scrollDown();
+}
+
+function showChips(list) {
+  chipsInner.innerHTML = "";
+  list.forEach(label => {
+    const c = document.createElement("button");
+    c.className = "chip";
+    c.textContent = label;
+    c.onclick = () => {
+      chipsInner.querySelectorAll(".chip").forEach(x => x.classList.remove("selected"));
+      c.classList.add("selected");
+      textInput.value = label;
+      sendBtn.classList.add("active");
+    };
+    chipsInner.appendChild(c);
+  });
+  chipsWrap.classList.add("open");
+}
+function hideChips() { chipsWrap.classList.remove("open"); }
+
+// ── Partner A: create session ────────────────────────────────────────────────
+async function startAsPartnerA() {
+  document.getElementById("startBtn").textContent = "Creating session…";
+  document.getElementById("startBtn").disabled = true;
+  try {
+    const res = await fetch("/.netlify/functions/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "create" })
+    });
+    const data = await res.json();
+    coupleId = data.coupleId;
+    myRole = "A";
+  } catch (e) {
+    coupleId = Math.random().toString(36).substring(2,10).toUpperCase();
+    myRole = "A";
+  }
+  document.getElementById("landingScreen").classList.add("hidden");
+  const badge = document.getElementById("roleBadge");
+  badge.textContent = "Partner A";
+  badge.classList.add("show");
+  runStep(0);
+}
+
+// ── Save answers ─────────────────────────────────────────────────────────────
+async function saveAnswersToSession() {
+  try {
+    const res = await fetch("/.netlify/functions/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "save", coupleId, role: myRole, answers: userAnswers })
+    });
+    const data = await res.json();
+    return data.partnerReady || false;
+  } catch (e) { return false; }
+}
+
+// ── Poll for partner ─────────────────────────────────────────────────────────
+async function pollForPartner() {
+  try {
+    const res = await fetch("/.netlify/functions/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "get", coupleId })
+    });
+    return await res.json();
+  } catch (e) { return null; }
+}
+
+// ── Invite card ───────────────────────────────────────────────────────────────
+function getMagicLink() {
+  const base = window.location.origin + window.location.pathname;
+  return `${base}?session=${coupleId}&role=B`;
+}
+
+function addInviteCard() {
+  const row = document.createElement("div");
+  row.className = "bubble-row melba-row";
+  row.innerHTML = `
+    <div class="mini-av">🌸</div>
+    <div class="invite-card">
+      <div class="invite-heading">Send your partner a magic link 💌</div>
+      <div class="invite-sub">Tap below to copy their personal link. When they open it, they'll be taken straight into their own session — no code needed.</div>
+      <button class="invite-copy-btn" id="magicLinkBtn" onclick="copyMagicLink()">Copy link to share</button>
+    </div>`;
+  chatEl.appendChild(row);
+  requestAnimationFrame(() => requestAnimationFrame(() => row.classList.add("show")));
+  scrollDown();
+}
+
+function copyMagicLink() {
+  const link = getMagicLink();
+  navigator.clipboard.writeText(link).then(() => {
+    document.getElementById("magicLinkBtn").textContent = "Link copied! ✓";
+    setTimeout(() => { document.getElementById("magicLinkBtn").textContent = "Copy link to share"; }, 2500);
+  });
+}
+
+// ── Waiting card ──────────────────────────────────────────────────────────────
+let waitingRow = null;
+function addWaitingCard() {
+  const row = document.createElement("div");
+  row.className = "bubble-row melba-row";
+  row.innerHTML = `
+    <div class="mini-av ghost">🌸</div>
+    <div class="waiting-card">
+      <span class="waiting-pulse">⏳</span>
+      <div class="waiting-text">Waiting for your partner to finish their questions…</div>
+    </div>`;
+  chatEl.appendChild(row);
+  requestAnimationFrame(() => requestAnimationFrame(() => row.classList.add("show")));
+  scrollDown();
+  waitingRow = row;
+}
+function removeWaitingCard() { if (waitingRow) { waitingRow.remove(); waitingRow = null; } }
+
+// ── After-quiz flow ───────────────────────────────────────────────────────────
+async function afterQuiz() {
+  locked = true;
+  const partnerReady = await saveAnswersToSession();
+
+  if (myRole === "A") {
+    await delay(400);
+    showTyping(); await delay(700); removeTyping();
+    addMelba("Now let's get your partner in. Share the magic link below — when they finish their questions, your joint recommendation unlocks 🔓");
+    await delay(600);
+    addInviteCard();
+    await delay(800);
+    showTyping(); await delay(700); removeTyping();
+    addMelba("I'll let you know as soon as they're ready 💫", true);
+    await delay(400);
+    addWaitingCard();
+
+    pollTimer = setInterval(async () => {
+      const session = await pollForPartner();
+      if (session && session.partnerReady) {
+        clearInterval(pollTimer);
+        removeWaitingCard();
+        await delay(300);
+        showTyping(); await delay(800); removeTyping();
+        addMelba("Your partner just finished! 🎉 Finding your joint recommendation now…", true);
+        await delay(500);
+        fetchJointMatch(session.partnerA, session.partnerB);
+      }
+    }, 4000);
+
+  } else {
+    if (partnerReady) {
+      showTyping(); await delay(800); removeTyping();
+      addMelba("Both of you are in! Finding your joint recommendation now… 🎉", true);
+      await delay(500);
+      const session = await pollForPartner();
+      fetchJointMatch(session.partnerA, session.partnerB);
+    } else {
+      showTyping(); await delay(800); removeTyping();
+      addMelba("You're done! Now waiting for your partner to finish… I'll find your joint recommendation the moment they do 💫", true);
+      await delay(400);
+      addWaitingCard();
+
+      pollTimer = setInterval(async () => {
+        const session = await pollForPartner();
+        if (session && session.partnerReady) {
+          clearInterval(pollTimer);
+          removeWaitingCard();
+          showTyping(); await delay(800); removeTyping();
+          addMelba("Both done! Here's your joint recommendation 🌸", true);
+          await delay(500);
+          fetchJointMatch(session.partnerA, session.partnerB);
+        }
+      }, 4000);
+    }
+  }
+  locked = false;
+}
+
+// ── Fetch joint match ─────────────────────────────────────────────────────────
+async function fetchJointMatch(answersA, answersB) {
+  showTyping();
+  try {
+    const res = await fetch("/.netlify/functions/match", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ answers: { partnerA: answersA, partnerB: answersB }, episodes: EPISODES })
+    });
+    const match = await res.json();
+    removeTyping();
+    addResultCard(match, true);
+    await delay(800);
+    showTyping(); await delay(700); removeTyping();
+    addMelba("This one was chosen for both of you — together. Enjoy tonight 🌸", true);
+  } catch (err) {
+    removeTyping();
+    addMelba("Something went wrong finding your match. Please try again 🙏", true);
+  }
+}
+
+// ── Result card ───────────────────────────────────────────────────────────────
+function addResultCard(match, isJoint = false) {
+  const row = document.createElement("div");
+  row.className = "bubble-row melba-row";
+  const tags = (match.practice_tags || []).map(t => `<span class="rc-chip">${t}</span>`).join("");
+  const spiceTag = match.spice ? `<span class="rc-chip">${match.spice}</span>` : "";
+  row.innerHTML = `
+    <div class="mini-av">🌸</div>
+    <div class="result-card">
+      <div class="rc-hero">
+        ${isJoint ? '<div class="rc-joint-badge">✨ Joint pick</div>' : ''}
+        <div class="rc-tag">${isJoint ? "Your experience together" : "Your first experience"}</div>
+        <div class="rc-sparkle">✨</div>
+      </div>
+      <div class="rc-body">
+        <div class="rc-title">${match.episode_name || "Your Perfect Experience"}</div>
+        <div class="rc-desc">${match.reason || "Tonight is the perfect moment to explore something beautiful together."}</div>
+        <div class="rc-chips">${spiceTag}${tags}</div>
+        <button class="rc-btn">Start this experience →</button>
+      </div>
+    </div>`;
+  chatEl.appendChild(row);
+  requestAnimationFrame(() => requestAnimationFrame(() => row.classList.add("show")));
+  scrollDown();
+}
+
+// ── Conversation runner ───────────────────────────────────────────────────────
+async function runStep(index, isPartnerB = false) {
+  locked = true;
+  if (index >= steps.length) { afterQuiz(); return; }
+
+  const step = steps[index];
+  updateProgress(step.progress);
+  hideChips();
+
+  let msgs = step.messages;
+  if (index === 0 && isPartnerB) {
+    msgs = [
+      { text: "Hey, I'm your Melba guide 🌸", gap: 400 },
+      { text: "Your partner has already answered — now it's your turn. Your answers are private; they won't see your exact words.", gap: 1100 },
+      { text: "What brings you here today?", gap: 900 }
+    ];
+  }
+
+  for (let i = 0; i < msgs.length; i++) {
+    await delay(msgs[i].gap || 600);
+    showTyping(); await delay(750); removeTyping();
+    addMelba(msgs[i].text, i === msgs.length - 1);
+    await delay(80);
+  }
+
+  await delay(350);
+  if (step.chips) showChips(step.chips);
+  locked = false;
+}
+
+async function handleAnswer(text) {
+  if (locked) return;
+  locked = true;
+  hideChips();
+  textInput.value = "";
+  sendBtn.classList.remove("active");
+  addUser(text);
+
+  if (currentStep < answerKeys.length) userAnswers[answerKeys[currentStep]] = text;
+
+  await delay(300);
+  const nextStep = steps[currentStep + 1];
+  if (nextStep && nextStep.ack && nextStep.ack.length) {
+    const ack = nextStep.ack[Math.floor(Math.random() * nextStep.ack.length)];
+    showTyping(); await delay(600); removeTyping();
+    addMelba(ack, false);
+    await delay(200);
+  }
+
+  currentStep++;
+  locked = false;
+  runStep(currentStep, myRole === "B");
+}
+
+function onType() {
+  sendBtn.classList.toggle("active", textInput.value.trim().length > 0);
+  if (textInput.value.trim()) chipsInner.querySelectorAll(".chip").forEach(c => c.classList.remove("selected"));
+}
+function onKey(e) { if (e.key === "Enter" && textInput.value.trim()) sendFree(); }
+function sendFree() { const val = textInput.value.trim(); if (!val || locked) return; handleAnswer(val); }
+
+// ── Magic link auto-start ────────────────────────────────────────────────────
+window.addEventListener("DOMContentLoaded", () => {
+  if (window._magicSession) {
+    coupleId = window._magicSession;
+    myRole   = "B";
+    document.getElementById("landingScreen").classList.add("hidden");
+    const badge = document.getElementById("roleBadge");
+    badge.textContent = "Partner B";
+    badge.classList.add("show");
+    document.getElementById("headerStatus").textContent = "Linked to your session";
+
+    fetch("/.netlify/functions/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "get", coupleId })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.partnerB) {
+        document.getElementById("landingScreen").classList.remove("hidden");
+        document.getElementById("landingScreen").innerHTML = `
+          <div style="font-size:48px;margin-bottom:20px">🌸</div>
+          <div style="font-family:'Bricolage Grotesque',sans-serif;font-size:22px;font-weight:800;color:#1A1040;text-align:center;margin-bottom:12px">This session is already complete</div>
+          <div style="font-size:14px;color:#6B6B8A;text-align:center;line-height:1.6">It looks like both partners have already answered. Ask your partner to start a new one!</div>`;
+      } else {
+        runStep(0, true);
+      }
+    })
+    .catch(() => runStep(0, true));
+  }
+});
+</script>
+</body>
+</html>

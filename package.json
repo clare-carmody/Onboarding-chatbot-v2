@@ -1,0 +1,9 @@
+{
+  "name": "melba-onboarding-v2",
+  "version": "2.0.0",
+  "description": "Melba AI Onboarding — Phase 2 with partner linking",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@netlify/blobs": "^8.1.0"
+  }
+}
