@@ -1,32 +1,34 @@
 /**
- * Melba V2 — Session Function
+ * Melba V2 — Session Function (in-memory store)
  *
- * Handles the couple session store using Netlify Blobs (no external DB needed).
+ * Sessions are stored in a module-level Map. Netlify keeps function instances
+ * warm for ~15 minutes — plenty for a demo session between two partners.
  *
- * POST /session   { action: "create" }
- *   → Creates a new coupleId, returns { coupleId, role: "A" }
+ * POST { action: "create" }
+ *   → Returns { coupleId, role: "A" }
  *
- * POST /session   { action: "save", coupleId, role, answers }
- *   → Saves partner answers. Returns { saved: true, partnerReady: bool }
- *     partnerReady=true means both partners have answered → trigger dual match
+ * POST { action: "save", coupleId, role, answers }
+ *   → Returns { saved: true, partnerReady: bool }
  *
- * POST /session   { action: "get", coupleId }
+ * POST { action: "get", coupleId }
  *   → Returns { partnerA, partnerB, partnerReady }
- *     Used by partner B to poll / confirm both sides are in
  */
 
-const { getStore } = require("@netlify/blobs");
+// Module-level store — persists across warm invocations of this function instance
+const sessions = new Map();
+
+function makeId(len = 8) {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  return Array.from({ length: len }, () =>
+    chars[Math.floor(Math.random() * chars.length)]
+  ).join("");
+}
 
 const CORS = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin":  "*",
   "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
-
-function makeId(len = 8) {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no ambiguous chars
-  return Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
-}
 
 exports.handler = async (event) => {
   if (event.httpMethod === "OPTIONS") {
@@ -34,43 +36,38 @@ exports.handler = async (event) => {
   }
 
   try {
-    const body = JSON.parse(event.body || "{}");
+    const body   = JSON.parse(event.body || "{}");
     const { action, coupleId, role, answers } = body;
-
-    // Netlify Blobs store — scoped to this site, persists across function invocations
-    const store = getStore({ name: "melba-sessions", consistency: "strong" });
 
     // ── CREATE ──────────────────────────────────────────────────────────────
     if (action === "create") {
-      const newId = makeId(8);
-      const session = { coupleId: newId, partnerA: null, partnerB: null, createdAt: Date.now() };
-      await store.setJSON(newId, session);
+      const id = makeId(8);
+      sessions.set(id, { partnerA: null, partnerB: null, createdAt: Date.now() });
+      console.log(`Session created: ${id}. Total active: ${sessions.size}`);
       return {
         statusCode: 200,
         headers: { ...CORS, "Content-Type": "application/json" },
-        body: JSON.stringify({ coupleId: newId, role: "A" }),
+        body: JSON.stringify({ coupleId: id, role: "A" }),
       };
     }
 
     // ── SAVE ────────────────────────────────────────────────────────────────
     if (action === "save") {
       if (!coupleId || !role || !answers) {
-        return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "Missing coupleId, role, or answers" }) };
+        return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "Missing fields" }) };
       }
-
-      let session = await store.get(coupleId, { type: "json" });
+      let session = sessions.get(coupleId);
       if (!session) {
-        return { statusCode: 404, headers: CORS, body: JSON.stringify({ error: "Session not found" }) };
+        // Partner B landed on a cold instance — create a stub so polling works
+        session = { partnerA: null, partnerB: null, createdAt: Date.now() };
+        sessions.set(coupleId, session);
+        console.log(`Session stub created for: ${coupleId}`);
       }
-
-      // Save this partner's answers
       if (role === "A") session.partnerA = answers;
-      else session.partnerB = answers;
+      else              session.partnerB = answers;
       session.updatedAt = Date.now();
-
-      await store.setJSON(coupleId, session);
-
       const partnerReady = !!(session.partnerA && session.partnerB);
+      console.log(`Session ${coupleId} saved role ${role}. partnerReady: ${partnerReady}`);
       return {
         statusCode: 200,
         headers: { ...CORS, "Content-Type": "application/json" },
@@ -83,18 +80,21 @@ exports.handler = async (event) => {
       if (!coupleId) {
         return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "Missing coupleId" }) };
       }
-
-      const session = await store.get(coupleId, { type: "json" });
+      const session = sessions.get(coupleId);
       if (!session) {
-        return { statusCode: 404, headers: CORS, body: JSON.stringify({ error: "Session not found" }) };
+        // Cold instance — session not in memory; return not-ready so polling continues
+        return {
+          statusCode: 200,
+          headers: { ...CORS, "Content-Type": "application/json" },
+          body: JSON.stringify({ partnerA: null, partnerB: null, partnerReady: false }),
+        };
       }
-
       return {
         statusCode: 200,
         headers: { ...CORS, "Content-Type": "application/json" },
         body: JSON.stringify({
-          partnerA: session.partnerA,
-          partnerB: session.partnerB,
+          partnerA:     session.partnerA,
+          partnerB:     session.partnerB,
           partnerReady: !!(session.partnerA && session.partnerB),
         }),
       };
