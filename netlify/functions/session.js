@@ -1,21 +1,45 @@
 /**
- * Melba V2 — Session Function (in-memory store)
+ * Melba V2 — Session Function (Upstash Redis)
  *
- * Sessions are stored in a module-level Map. Netlify keeps function instances
- * warm for ~15 minutes — plenty for a demo session between two partners.
+ * Uses Upstash Redis REST API — pure fetch, no SDK, works in any serverless env.
+ * Env vars needed in Netlify:
+ *   UPSTASH_REDIS_REST_URL   — e.g. https://xxxx.upstash.io
+ *   UPSTASH_REDIS_REST_TOKEN — your rest token
  *
- * POST { action: "create" }
- *   → Returns { coupleId, role: "A" }
+ * Sessions expire after 1 hour (TTL = 3600s).
  *
- * POST { action: "save", coupleId, role, answers }
- *   → Returns { saved: true, partnerReady: bool }
- *
- * POST { action: "get", coupleId }
- *   → Returns { partnerA, partnerB, partnerReady }
+ * POST { action: "create" }                         → { coupleId, role: "A" }
+ * POST { action: "save", coupleId, role, answers }  → { saved: true, partnerReady: bool }
+ * POST { action: "get",  coupleId }                 → { partnerA, partnerB, partnerReady }
  */
 
-// Module-level store — persists across warm invocations of this function instance
-const sessions = new Map();
+const REDIS_URL   = process.env.UPSTASH_REDIS_REST_URL;
+const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+const TTL         = 3600; // 1 hour
+
+const CORS = {
+  "Access-Control-Allow-Origin":  "*",
+  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+// ── Upstash REST helpers ─────────────────────────────────────────────────────
+
+async function redisGet(key) {
+  const res  = await fetch(`${REDIS_URL}/get/${encodeURIComponent(key)}`, {
+    headers: { Authorization: `Bearer ${REDIS_TOKEN}` },
+  });
+  const json = await res.json();
+  if (!json.result) return null;
+  return JSON.parse(json.result);
+}
+
+async function redisSet(key, value) {
+  const encoded = encodeURIComponent(JSON.stringify(value));
+  await fetch(`${REDIS_URL}/set/${encodeURIComponent(key)}/${encoded}/ex/${TTL}`, {
+    headers: { Authorization: `Bearer ${REDIS_TOKEN}` },
+  });
+}
 
 function makeId(len = 8) {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -24,11 +48,7 @@ function makeId(len = 8) {
   ).join("");
 }
 
-const CORS = {
-  "Access-Control-Allow-Origin":  "*",
-  "Access-Control-Allow-Headers": "Content-Type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+// ── Handler ──────────────────────────────────────────────────────────────────
 
 exports.handler = async (event) => {
   if (event.httpMethod === "OPTIONS") {
@@ -36,14 +56,14 @@ exports.handler = async (event) => {
   }
 
   try {
-    const body   = JSON.parse(event.body || "{}");
-    const { action, coupleId, role, answers } = body;
+    const { action, coupleId, role, answers } = JSON.parse(event.body || "{}");
 
     // ── CREATE ──────────────────────────────────────────────────────────────
     if (action === "create") {
-      const id = makeId(8);
-      sessions.set(id, { partnerA: null, partnerB: null, createdAt: Date.now() });
-      console.log(`Session created: ${id}. Total active: ${sessions.size}`);
+      const id      = makeId(8);
+      const session = { partnerA: null, partnerB: null, createdAt: Date.now() };
+      await redisSet(id, session);
+      console.log(`Session created: ${id}`);
       return {
         statusCode: 200,
         headers: { ...CORS, "Content-Type": "application/json" },
@@ -56,18 +76,17 @@ exports.handler = async (event) => {
       if (!coupleId || !role || !answers) {
         return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "Missing fields" }) };
       }
-      let session = sessions.get(coupleId);
+      let session = await redisGet(coupleId);
       if (!session) {
-        // Partner B landed on a cold instance — create a stub so polling works
         session = { partnerA: null, partnerB: null, createdAt: Date.now() };
-        sessions.set(coupleId, session);
-        console.log(`Session stub created for: ${coupleId}`);
       }
       if (role === "A") session.partnerA = answers;
       else              session.partnerB = answers;
       session.updatedAt = Date.now();
+      await redisSet(coupleId, session);
+
       const partnerReady = !!(session.partnerA && session.partnerB);
-      console.log(`Session ${coupleId} saved role ${role}. partnerReady: ${partnerReady}`);
+      console.log(`Saved ${coupleId} role ${role} — partnerReady: ${partnerReady}`);
       return {
         statusCode: 200,
         headers: { ...CORS, "Content-Type": "application/json" },
@@ -80,9 +99,8 @@ exports.handler = async (event) => {
       if (!coupleId) {
         return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "Missing coupleId" }) };
       }
-      const session = sessions.get(coupleId);
+      const session = await redisGet(coupleId);
       if (!session) {
-        // Cold instance — session not in memory; return not-ready so polling continues
         return {
           statusCode: 200,
           headers: { ...CORS, "Content-Type": "application/json" },
